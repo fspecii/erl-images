@@ -13,7 +13,10 @@
       "types": "./src/index.d.ts",
       "import": "./src/index.js"
     },
-    "./blocklist": "./src/blocklist.js"
+    "./blocklist": {
+      "types": "./src/blocklist.d.ts",
+      "import": "./src/blocklist.js"
+    }
   },
   "files": [
     "src"
