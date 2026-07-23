@@ -1,0 +1,42 @@
+{
+  "name": "erl-images",
+  "version": "1.0.0",
+  "description": "Keyword-driven, copyright-safe image fetcher for bulk site building. Scrapes Bing Images (no API key), filters licensed/watermarked sources via a hardened blacklist, validates dimensions, and outputs ready-to-ship webp.",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "bin": {
+    "erl-images": "src/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./blocklist": "./src/blocklist.js"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "sharp": "^0.35.3"
+  },
+  "keywords": [
+    "bing",
+    "images",
+    "stock",
+    "copyright",
+    "blacklist",
+    "seo",
+    "webp",
+    "scraper"
+  ],
+  "author": "fspecii",
+  "license": "MIT"
+}
