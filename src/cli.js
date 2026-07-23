@@ -37,6 +37,7 @@ Options:
   --quality N        webp/jpeg quality 1-100 (default 80)
   --name PREFIX      filename prefix (default: slug of query)
   --no-webp          keep original format instead of converting to webp
+  --overwrite        re-download even if matching files already exist (default: skip)
   --urls             print candidate URLs only, do not download
   --json             output result metadata as JSON
   -h, --help         show this help
@@ -82,6 +83,7 @@ async function main() {
     quality: args.quality ? parseInt(args.quality, 10) : 80,
     namePrefix: typeof args.name === "string" ? args.name : null,
     webp: !args["no-webp"],
+    overwrite: !!args.overwrite,
     onLog: args.json ? null : (msg) => process.stderr.write(`[erl-images] ${msg}\n`),
   });
 

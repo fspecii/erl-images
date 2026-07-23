@@ -154,6 +154,49 @@ function slugify(str, max = 40) {
   );
 }
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Files already saved for a prefix, keyed by their embedded content hash.
+ * The 12-hex-char hash makes the match exact, so prefix "chelsea" never
+ * collides with "chelsea-harbour".
+ */
+function existingFiles(outDir, prefix) {
+  if (!fs.existsSync(outDir)) return [];
+  const re = new RegExp(`^${escapeRegex(prefix)}-([0-9a-f]{12})\\.(webp|jpe?g|png)$`, "i");
+  return fs
+    .readdirSync(outDir)
+    .map((name) => {
+      const m = re.exec(name);
+      return m ? { path: path.join(outDir, name), hash: m[1].toLowerCase() } : null;
+    })
+    .filter(Boolean);
+}
+
+async function describeFile(filePath, query) {
+  let width = 0;
+  let height = 0;
+  try {
+    const meta = await sharp(filePath).metadata();
+    width = meta.width ?? 0;
+    height = meta.height ?? 0;
+  } catch {
+    /* leave zeroed if unreadable */
+  }
+  return {
+    path: filePath,
+    filename: path.basename(filePath),
+    url: "",
+    query,
+    width,
+    height,
+    bytes: fs.statSync(filePath).size,
+    cached: true,
+  };
+}
+
 /**
  * Search Bing, download candidates, validate dimensions, convert to webp,
  * and write ready-to-ship files to `outDir`. Returns metadata for each saved file.
@@ -172,6 +215,7 @@ export async function fetchImages(query, options = {}) {
     namePrefix = null,
     candidatesPerResult = 6,
     timeoutMs = 15000,
+    overwrite = false,
     onLog = null,
   } = options;
 
@@ -179,17 +223,36 @@ export async function fetchImages(query, options = {}) {
 
   fs.mkdirSync(outDir, { recursive: true });
 
-  const urls = await searchImages(query, { count: count * candidatesPerResult, aspect, size });
+  const prefix = namePrefix ? slugify(namePrefix) : slugify(query, 30);
+
+  const seenHashes = new Set();
+  const cached = [];
+  if (!overwrite) {
+    for (const file of existingFiles(outDir, prefix)) {
+      seenHashes.add(file.hash);
+      cached.push(await describeFile(file.path, query));
+    }
+  }
+
+  if (cached.length >= count) {
+    log(`cache hit: ${cached.length} existing for "${query}", skipping fetch`);
+    return cached.slice(0, count);
+  }
+
+  const remaining = count - cached.length;
+  if (cached.length > 0) {
+    log(`${cached.length} cached, downloading ${remaining} more for "${query}"`);
+  }
+
+  const urls = await searchImages(query, { count: remaining * candidatesPerResult, aspect, size });
   log(`found ${urls.length} candidate urls for "${query}"`);
 
-  const prefix = namePrefix ? slugify(namePrefix) : slugify(query, 30);
   const results = [];
-  const seenHashes = new Set();
   let attempts = 0;
-  const maxAttempts = count * candidatesPerResult;
+  const maxAttempts = remaining * candidatesPerResult;
 
   for (const url of urls) {
-    if (results.length >= count) break;
+    if (results.length >= remaining) break;
     if (attempts >= maxAttempts) break;
     attempts++;
 
@@ -225,6 +288,7 @@ export async function fetchImages(query, options = {}) {
         width: processed.width,
         height: processed.height,
         bytes: processed.data.length,
+        cached: false,
       });
       log(`saved ${filename} (${processed.width}x${processed.height})`);
     } catch {
@@ -232,8 +296,8 @@ export async function fetchImages(query, options = {}) {
     }
   }
 
-  log(`validated ${results.length}/${count} for "${query}" (${attempts} attempts)`);
-  return results;
+  log(`validated ${results.length}/${remaining} new for "${query}" (${attempts} attempts)`);
+  return [...cached, ...results];
 }
 
 export { isBlocked } from "./blocklist.js";

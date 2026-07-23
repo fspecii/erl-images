@@ -31,6 +31,13 @@ export interface FetchOptions {
   candidatesPerResult?: number;
   /** Per-download timeout in ms (default 15000). */
   timeoutMs?: number;
+  /**
+   * Re-download even if matching files already exist in outDir (default false).
+   * When false, existing files for the same prefix are reused and only the
+   * missing count is fetched — so a rebuild with everything cached makes zero
+   * network requests.
+   */
+  overwrite?: boolean;
   /** Optional progress callback. */
   onLog?: ((message: string) => void) | null;
 }
@@ -39,12 +46,14 @@ export interface FetchedImage {
   /** Absolute or relative path to the saved file. */
   path: string;
   filename: string;
-  /** Original source URL the image was downloaded from. */
+  /** Original source URL the image was downloaded from. Empty for cached files. */
   url: string;
   query: string;
   width: number;
   height: number;
   bytes: number;
+  /** True if this file already existed on disk and was reused (not downloaded). */
+  cached: boolean;
 }
 
 /** Scrape Bing Images and return direct, non-blocked image URLs. */

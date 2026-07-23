@@ -78,6 +78,32 @@ Run `erl-images --help` for all flags.
 | `quality` / `--quality` | 80 | webp/jpeg quality |
 | `webp` / `--no-webp` | true | convert to webp |
 | `namePrefix` / `--name` | slug of query | filename prefix |
+| `overwrite` / `--overwrite` | false | re-download even if files already exist |
+
+## Build caching (skip what's already downloaded)
+
+By default `fetchImages` **reuses images already on disk** and only fetches
+what's missing, so re-running a build does not re-download anything.
+
+For each call it looks in `outDir` for files matching the prefix
+(`<prefix>-<hash>.webp`):
+
+- enough already there → returns them, **zero network requests**;
+- some there → downloads only the missing count to top up;
+- none there → downloads all `count`.
+
+```js
+// First build: downloads 1 file.
+await fetchImages("chelsea kings road", { count: 1, outDir, namePrefix: "chelsea" });
+// Every rebuild after: cache hit, no Bing request, no download.
+await fetchImages("chelsea kings road", { count: 1, outDir, namePrefix: "chelsea" });
+```
+
+Returned items carry `cached: true` when reused, `false` when freshly
+downloaded. Pass `overwrite: true` (or `--overwrite`) to force a refresh.
+
+> Use a stable `namePrefix` per slot (e.g. the area/service slug) so the cache
+> key stays consistent across builds.
 
 ## The blacklist
 
